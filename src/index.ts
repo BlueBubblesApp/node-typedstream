@@ -7,17 +7,17 @@ const inp = fs.readFileSync("/Users/elliot/Desktop/abpayload.bin");
 
 const ts = new TypedStreamReader(inp);
 
+let i = 0;
+const testArr = [];
 for (const obj of ts) {
-    if (Symbol.iterator in Object(obj)) {
-        // @ts-ignore
-        // for (const test of obj) {
-        //     console.log(test);
-        //     console.log("did this");
-        // }
-        console.log(obj);
-    } else {
-        console.log(obj);
-    }
+    console.log(i++);
+    console.log(obj);
+    testArr.push(obj);
+}
+
+console.log("\nDONE WITH PROCESSING, PRINTING RESULT\n\n");
+for (const obj of testArr) {
+    console.log(obj);
 }
 
 // const unarchiver = new Unarchiver(ts);

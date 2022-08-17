@@ -61,7 +61,7 @@ const FIRST_TAG = -128
 const LAST_TAG = -111
 function inTagRange(n?: number): boolean {
     if (n == null) return false;
-    return n >= FIRST_TAG && n <= LAST_TAG + 1;
+    return n >= FIRST_TAG && n <= LAST_TAG;
 }
 // The first reference number to be used.
 // This has been chosen to be exactly one higher than the highest tag,
@@ -364,6 +364,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
      * (i. e. if EOF was hit prematurely).
      */
     private readExact(byteCount: number) {
+        console.log(`[readExact] at ${this.pos} bytes before read`);
         return this.data.subarray(this.pos, this.pos += byteCount);
     }
 
@@ -523,7 +524,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
             this.sharedStringTable.push(string);
             return string;
         } else {
-            const referenceNumber = this.readInteger(false, head);
+            const referenceNumber = this.readInteger(true, head);
             const decoded = decodeReferenceNumber(referenceNumber);
             return this.sharedStringTable[decoded];
         }
@@ -617,13 +618,17 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
         if (head == TAG_NIL) {
             yield undefined;
         } else if (head == TAG_NEW) {
+            console.log('[readObject] yielding begin object');
             yield new BeginObject();
+            console.log('[readObject] yielding classes');
             yield* this.readClass();
             let nextHead = this.readHeadByte();
             while (nextHead != TAG_END_OF_OBJECT) {
-                yield this.readTypedValues(nextHead);
+                console.log(`[readObject] reading typed values from read object with head ${nextHead}`);
+                yield* this.readTypedValues(nextHead);
                 nextHead = this.readHeadByte();
             }
+            console.log('[readObject] yielding end object');
             yield new EndObject();
         } else {
             yield this.readObjectReference(ObjectReference.Type.OBJECT, head);
@@ -671,6 +676,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
         } else if (typeEncoding == "#") {
             yield* this.readClass(head);
         } else if (typeEncoding == "@") {
+            console.log('[readValueWithEncoding] reading object')
             yield* this.readObject(head);
         } else if (typeEncoding == "!") {
             // "!" stands for an int-sized field that should be ignored when (un)archiving.
@@ -722,17 +728,25 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
      * See :class:`BeginTypedValues` and :class:`EndTypedValues` for information about what events are generated when and what they mean.
      */
     private * readTypedValues(head?: number, endOfStreamOk = false): Generator<ReadEvent> {
+        console.log('[readTypedValues] read typed values called');
         try {
-            head = this.readHeadByte();
+            head = this.readHeadByte(head);
         } catch (e) {
-            if (e instanceof InvalidTypedStreamError && endOfStreamOk) {
+            if (
+                e instanceof RangeError
+                && e.message == 'Attempt to access memory outside buffer bounds'
+                && endOfStreamOk
+            ) {
                 throw new EOFError(this.EOF_MESSAGE);
             } else {
                 throw e;
             }
         }
 
+        console.log(`[readTypedValues] we still have our head ${head}`);
+
         const encodingString = this.readSharedString(head);
+        console.log(`[readTypedValues] encoding string is ${encodingString}`);
         if (encodingString == null) {
             throw new InvalidTypedStreamError("Encountered nil type encoding string");
         }
@@ -756,6 +770,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
     private * readAllValues(): Generator<ReadEvent> {
         while (true) {
             try {
+                console.log('[readAllValues] reading typed values');
                 yield* this.readTypedValues(undefined, true);
             } catch (e) {
                 if (e instanceof EOFError) {
