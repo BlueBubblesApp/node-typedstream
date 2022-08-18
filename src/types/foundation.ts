@@ -82,7 +82,7 @@ export class NSMutableString extends NSString {
     };
 }
 
-@archivedClass("NSMutableAttributedString", true)
+@archivedClass("NSAttributedString", true)
 export class NSAttributedString extends NSString {
     attributes: NSAttribute[];
     constructor(value?: string, attributes?: NSAttribute[]) {
@@ -90,12 +90,10 @@ export class NSAttributedString extends NSString {
         this.value = value!;
         this.attributes = attributes!;
     }
-    static override initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): NSAttributedString {
-        if (archivedClass.version != 0) {
-            throw new EvalError(`Unsupported version: ${archivedClass.version}`);
-        }
-        const value = unarchiver.decodeTypedValues().values[0].value;
-
+    protected static readValue(unarchiver: Unarchiver) {
+        return unarchiver.decodeTypedValues().values[0].value;
+    }
+    protected static readAttributes(unarchiver: Unarchiver) {
         const groups = [];
         let nextEvent = unarchiver.reader.next().value;
         while (!(nextEvent instanceof EndObject)) {
@@ -123,11 +121,27 @@ export class NSAttributedString extends NSString {
 
             attributes.push({
                 range: [index, (index += length)-1],
-                value: attributeValue
+                value: attributeValue,
             });
         }
 
-        return new NSAttributedString(value, attributes);
+        return attributes;
+    }
+    static override initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): NSAttributedString {
+        if (archivedClass.version != 0) {
+            throw new EvalError(`Unsupported version: ${archivedClass.version}`);
+        }
+        return new NSAttributedString(this.readValue(unarchiver), this.readAttributes(unarchiver));
+    };
+}
+
+@archivedClass("NSMutableAttributedString", true)
+export class NSMutableAttributedString extends NSAttributedString {
+    static override initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): NSMutableAttributedString {
+        if (archivedClass.version != 0) {
+            throw new EvalError(`Unsupported version: ${archivedClass.version}`);
+        }
+        return new NSMutableAttributedString(this.readValue(unarchiver), this.readAttributes(unarchiver));
     };
 }
 

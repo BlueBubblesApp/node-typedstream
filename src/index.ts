@@ -1,13 +1,8 @@
 import * as fs from "fs";
-import {TypedStreamReader} from "./stream";
-import {TypedValue, Unarchiver} from "./archiver";
-import {NSString} from "./types/foundation";
+import {Unarchiver} from "./archiver";
 
-const inp = fs.readFileSync("/Users/elliot/Desktop/abpayload.bin");
+const input = fs.readFileSync("/Users/elliot/Desktop/abpayload.bin");
 
-const ts = new TypedStreamReader(inp);
-const unarchiver = new Unarchiver(ts);
+const unarchiver = Unarchiver.open(input);
 
-const test = unarchiver.decodeAll()[0].values[0];
-
-console.log(JSON.stringify(test, null, 2));
+console.log(unarchiver.decodeSingleRoot());

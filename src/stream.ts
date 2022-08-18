@@ -302,7 +302,6 @@ export type ReadEvent = BeginTypedValues | EndTypedValues | number | ObjectRefer
 export class TypedStreamReader implements Iterator<ReadEvent> {
     private EOF_MESSAGE = "End of typedstream reached";
 
-    private closeStream: boolean;
     private data: Buffer;
     private pos: number = 0;
 
@@ -318,11 +317,9 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
      * Create a :class:`TypedStreamReader` that reads data from the given raw byte stream.
      *
      * @param data The raw byte stream from which to read the typedstream data.
-     * @param close Controls whether the raw stream should also be closed when :meth:`close` is called.
      * By default this is ``False`` and callers are expected to close the raw stream themselves after closing the :class:`TypedStreamReader`.
      */
-    constructor(data: Buffer, close: boolean = false) {
-        this.closeStream = close;
+    constructor(data: Buffer) {
         this.data = data;
 
         this.sharedStringTable = [];

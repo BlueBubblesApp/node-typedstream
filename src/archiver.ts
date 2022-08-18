@@ -82,11 +82,14 @@ class NO_LOOKAHEAD {}
 
 export class Unarchiver {
     reader: TypedStreamReader
-    private lookahead: any;
     private sharedObjectTable: Array<[ObjectReference.Type, any]> = [];
 
     constructor(reader: TypedStreamReader) {
         this.reader = reader;
+    }
+
+    static open(data: Buffer): Unarchiver {
+        return new Unarchiver(new TypedStreamReader(data));
     }
 
     private lookupReference(ref: ObjectReference) {
@@ -311,4 +314,19 @@ export class Unarchiver {
         return contents;
     }
 
+    decodeSingleRoot() {
+        const values = this.decodeAll();
+
+        if (values.length == 0) {
+            throw new EvalError('Archive contains no values');
+        } else if (values.length > 1) {
+            throw new EvalError(`Archive contains ${values.length} root values (expected exactly one root value)`);
+        } else {
+            const rootGroup = values[0];
+            if (rootGroup instanceof TypedValue) {
+                return rootGroup.value;
+            }
+            throw new EvalError(`Archive's root value is a group of ${rootGroup.values.length} values (expected exactly one root value`);
+        }
+    }
 }
