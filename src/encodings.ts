@@ -137,3 +137,33 @@ export function buildStructEncoding(fieldTypeEncodings: string[], name?: string)
         ? '{' + fieldTypeEncodingString + "}"
         : '{' + name + '=' + fieldTypeEncodingString + '}';
 }
+
+export function encodingMatchesExpected(actualEncoding: string, expectedEncoding: string): boolean {
+    if (actualEncoding.startsWith('{') && expectedEncoding.startsWith('{')) {
+        const {name: actualName, fieldTypeEncodings: actualFieldTypeEncodings} = parseStructEncoding(actualEncoding);
+        const {name: expectedName, fieldTypeEncodings: expectedFieldTypeEncodings} = parseStructEncoding(expectedEncoding);
+        return (
+            (actualName == null || actualName == '?' || actualName == expectedName)
+            && allEncodingsMatchExpected(actualFieldTypeEncodings, expectedFieldTypeEncodings)
+        );
+    } else if (actualEncoding.startsWith('[') && expectedEncoding.startsWith('[')) {
+        const {length: actualLength, elementTypeEncoding: actualElementTypeEncoding} = parseArrayEncoding(actualEncoding);
+        const {length: expectedLength, elementTypeEncoding: expectedElementTypeEncoding} = parseArrayEncoding(expectedEncoding);
+        return (
+            actualLength == expectedLength
+            && encodingMatchesExpected(actualElementTypeEncoding, expectedElementTypeEncoding)
+        );
+    } else {
+        return actualEncoding == expectedEncoding;
+    }
+}
+
+export function allEncodingsMatchExpected(actualEncodings: string[], expectedEncodings: string[]) {
+    if (actualEncodings.length != expectedEncodings.length) return false;
+    for (let i=0; i<actualEncodings.length; i++) {
+        if (!encodingMatchesExpected(actualEncodings[i], expectedEncodings[i])) {
+            return false;
+        }
+    }
+    return true;
+}

@@ -9,7 +9,16 @@ import {
     TypedStreamReader
 } from "./stream";
 import {AssertionError} from "assert";
-import {buildStructEncoding, parseArrayEncoding, parseStructEncoding} from "./encodings";
+import {
+    allEncodingsMatchExpected,
+    buildArrayEncoding,
+    buildStructEncoding,
+    parseArrayEncoding,
+    parseStructEncoding
+} from "./encodings";
+import {archivedClassesByName, KnownArchivedObject, structClassesByEncoding} from "./types/known_types";
+// import all objc classes to register them
+import './types/foundation';
 
 export class TypedGroup {
     encodings: Array<string>;
@@ -60,48 +69,12 @@ export class GenericArchivedObject {
     }
 }
 
-export abstract class KnownArchivedObject {
-    static archivedName: string;
-    static initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): KnownArchivedObject {
-        throw new Error("Method not implemented");
-    };
-}
-
-type KnownArchivedObjectDerived = {new (): KnownArchivedObject} & typeof KnownArchivedObject;
-const archivedClassesByName = new Map<string, KnownArchivedObjectDerived>();
-
-export function archivedClass(archivedName: string) {
-    return (target: KnownArchivedObjectDerived) => {
-        target.archivedName = archivedName;
-        archivedClassesByName.set(archivedName, target);
-    }
-}
-
 class GenericStruct {
     name?: string;
     fields: any[];
     constructor(fields: any[], name?: string) {
         this.name = name;
         this.fields = fields;
-    }
-}
-
-abstract class KnownStruct {
-    static structName: string;
-    static fieldEncodings: string[];
-    static encoding: string;
-    protected constructor(fields: any[]) {}
-}
-
-type KnownStructDerived = {new (fields: any[]): KnownStruct} & typeof KnownStruct;
-const structClassesByEncoding = new Map<string, KnownStructDerived>();
-
-function structClass(structName: string, fieldEncodings: string[]) {
-    return (target: KnownStructDerived) => {
-        target.structName = structName;
-        target.fieldEncodings = fieldEncodings;
-        target.encoding = buildStructEncoding(fieldEncodings, structName);
-        structClassesByEncoding.set(target.encoding, target);
     }
 }
 
@@ -127,7 +100,7 @@ export class Unarchiver {
     decodeAnyUntypedValue(expectedEncoding: string): any {
         const first = this.reader.next().value;
 
-        if (first == null || (typeof first in ["number", "string"])) {
+        if (first == null || (["number", "string"].includes(typeof first))) {
             return first;
         } else if (first instanceof ObjectReference) {
             return this.lookupReference(first);
@@ -213,7 +186,6 @@ export class Unarchiver {
             // replace the placeholder in the shared object table with the real object.
             this.sharedObjectTable[placeholderIndex] = [ObjectReference.Type.OBJECT, obj];
 
-            console.log(obj);
             if (obj instanceof GenericArchivedObject) {
                 let nextEvent = this.reader.next().value;
                 while (!(nextEvent instanceof EndObject)) {
@@ -221,9 +193,11 @@ export class Unarchiver {
                     nextEvent = this.reader.next().value;
                 }
             } else {
-                const end = this.reader.next().value;
-                if (!(end instanceof EndObject)) {
-                    throw new EvalError(`Expected EndObject, not ${typeof end}`);
+                if (!archivedClassesByName.get(archivedClass.name)!.consumeEnd) {
+                    const end = this.reader.next().value;
+                    if (!(end instanceof EndObject)) {
+                        throw new EvalError(`Expected EndObject, not ${end!.constructor.name}`);
+                    }
                 }
             }
 
@@ -289,6 +263,38 @@ export class Unarchiver {
         }
 
         return ret;
+    }
+
+    decodeValuesOfTypes(typeEncodings: string[]): any {
+        if (typeEncodings.length == 0) {
+            throw new TypeError('Expected at least one type encoding');
+        }
+
+        const group = this.decodeTypedValues();
+
+        if (!allEncodingsMatchExpected(group.encodings, typeEncodings)) {
+            throw new EvalError(`Expected type encodings ${typeEncodings}, but got type encodings ${group.encodings} in stream`);
+        }
+
+        return group.values;
+    }
+
+    decodeValueOfType(typeEncoding: string) {
+        return this.decodeValuesOfTypes([typeEncoding])[0];
+    }
+
+    decodeArray(elementTypeEncoding: string, length: number): CArray {
+        return this.decodeValueOfType(buildArrayEncoding(length, elementTypeEncoding));
+    }
+
+    decodeDataObject() {
+        const length = this.decodeValueOfType('i');
+        if (length < 0) {
+            throw new EvalError(`Data object length cannot be negative: ${length}`);
+        }
+        const dataArray = this.decodeArray('c', length);
+        //TODO check array type
+        return dataArray.elements;
     }
 
     decodeAll() {

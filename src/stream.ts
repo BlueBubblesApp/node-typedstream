@@ -364,7 +364,6 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
      * (i. e. if EOF was hit prematurely).
      */
     private readExact(byteCount: number) {
-        console.log(`[readExact] at ${this.pos} bytes before read`);
         return this.data.subarray(this.pos, this.pos += byteCount);
     }
 
@@ -618,17 +617,13 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
         if (head == TAG_NIL) {
             yield undefined;
         } else if (head == TAG_NEW) {
-            console.log('[readObject] yielding begin object');
             yield new BeginObject();
-            console.log('[readObject] yielding classes');
             yield* this.readClass();
             let nextHead = this.readHeadByte();
             while (nextHead != TAG_END_OF_OBJECT) {
-                console.log(`[readObject] reading typed values from read object with head ${nextHead}`);
                 yield* this.readTypedValues(nextHead);
                 nextHead = this.readHeadByte();
             }
-            console.log('[readObject] yielding end object');
             yield new EndObject();
         } else {
             yield this.readObjectReference(ObjectReference.Type.OBJECT, head);
@@ -676,7 +671,6 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
         } else if (typeEncoding == "#") {
             yield* this.readClass(head);
         } else if (typeEncoding == "@") {
-            console.log('[readValueWithEncoding] reading object')
             yield* this.readObject(head);
         } else if (typeEncoding == "!") {
             // "!" stands for an int-sized field that should be ignored when (un)archiving.
@@ -728,7 +722,6 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
      * See :class:`BeginTypedValues` and :class:`EndTypedValues` for information about what events are generated when and what they mean.
      */
     private * readTypedValues(head?: number, endOfStreamOk = false): Generator<ReadEvent> {
-        console.log('[readTypedValues] read typed values called');
         try {
             head = this.readHeadByte(head);
         } catch (e) {
@@ -743,10 +736,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
             }
         }
 
-        console.log(`[readTypedValues] we still have our head ${head}`);
-
         const encodingString = this.readSharedString(head);
-        console.log(`[readTypedValues] encoding string is ${encodingString}`);
         if (encodingString == null) {
             throw new InvalidTypedStreamError("Encountered nil type encoding string");
         }
@@ -770,7 +760,6 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
     private * readAllValues(): Generator<ReadEvent> {
         while (true) {
             try {
-                console.log('[readAllValues] reading typed values');
                 yield* this.readTypedValues(undefined, true);
             } catch (e) {
                 if (e instanceof EOFError) {
