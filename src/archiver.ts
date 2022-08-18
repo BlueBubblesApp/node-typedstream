@@ -248,7 +248,7 @@ export class Unarchiver {
         const begin = lookahead == NO_LOOKAHEAD ? this.reader.next().value : lookahead;
 
         if (!(begin instanceof BeginTypedValues)) {
-            throw new EvalError(`Expected BeginTypeValues, not ${typeof begin}`);
+            throw new EvalError(`Expected BeginTypeValues, not ${begin!.constructor.name}`);
         }
 
         // Single typed values are quite common,

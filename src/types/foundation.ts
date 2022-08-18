@@ -82,7 +82,7 @@ export class NSMutableString extends NSString {
     };
 }
 
-@archivedClass("NSAttributedString", true)
+@archivedClass("NSAttributedString")
 export class NSAttributedString extends NSString {
     attributes: NSAttribute[];
     constructor(value?: string, attributes?: NSAttribute[]) {
@@ -93,34 +93,35 @@ export class NSAttributedString extends NSString {
     protected static readValue(unarchiver: Unarchiver) {
         return unarchiver.decodeTypedValues().values[0].value;
     }
-    protected static readAttributes(unarchiver: Unarchiver) {
-        const groups = [];
-        let nextEvent = unarchiver.reader.next().value;
-        while (!(nextEvent instanceof EndObject)) {
-            groups.push(unarchiver.decodeTypedValues(nextEvent));
-            nextEvent = unarchiver.reader.next().value;
+    protected static readRange(unarchiver: Unarchiver) {
+        const range = unarchiver.decodeTypedValues();
+        return {
+            reference: range.values[0],
+            length: range.values[1],
+        };
+    }
+    protected static readAttributeValue(unarchiver: Unarchiver) {
+        const dict = unarchiver.decodeTypedValues().values[0].contents;
+        const attributeValue: NSAttributeValue = {};
+        for (const [key, value] of dict.entries()) {
+            attributeValue[key.value] = value.value;
         }
-
+        return attributeValue;
+    }
+    protected static readAttributes(unarchiver: Unarchiver, length: number) {
         const attributes: NSAttribute[] = [];
         let index = 0;
         let sharedAttributeValues: {[key: number]: NSAttributeValue} = {};
-        for (let i=0; i<groups.length; i++) {
-            const reference = groups[i].values[0];
-            const length = groups[i].values[1];
+        while (index < length) {
+            const range = this.readRange(unarchiver);
 
-            let attributeValue: NSAttributeValue = {};
-            if (groups[i+1] instanceof TypedValue) {
-                const dict = groups[++i].values[0].contents;
-                for (const [key, value] of dict.entries()) {
-                    attributeValue[key.value] = value.value;
-                }
-                sharedAttributeValues[reference] = attributeValue;
-            } else {
-                attributeValue = sharedAttributeValues[reference];
+            if (!(range.reference in sharedAttributeValues)) {
+                sharedAttributeValues[range.reference] = this.readAttributeValue(unarchiver);
             }
+            const attributeValue = sharedAttributeValues[range.reference];
 
             attributes.push({
-                range: [index, (index += length)-1],
+                range: [index, (index += range.length)-1],
                 value: attributeValue,
             });
         }
@@ -131,17 +132,19 @@ export class NSAttributedString extends NSString {
         if (archivedClass.version != 0) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        return new NSAttributedString(this.readValue(unarchiver), this.readAttributes(unarchiver));
+        const value = this.readValue(unarchiver);
+        return new NSAttributedString(value, this.readAttributes(unarchiver, value.length));
     };
 }
 
-@archivedClass("NSMutableAttributedString", true)
+@archivedClass("NSMutableAttributedString")
 export class NSMutableAttributedString extends NSAttributedString {
     static override initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): NSMutableAttributedString {
         if (archivedClass.version != 0) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        return new NSMutableAttributedString(this.readValue(unarchiver), this.readAttributes(unarchiver));
+        const value = this.readValue(unarchiver);
+        return new NSMutableAttributedString(value, this.readAttributes(unarchiver, value.length));
     };
 }
 
