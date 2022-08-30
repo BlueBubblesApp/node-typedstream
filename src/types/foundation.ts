@@ -84,11 +84,11 @@ export class NSMutableString extends NSString {
 
 @archivedClass("NSAttributedString")
 export class NSAttributedString extends NSString {
-    attributes: NSAttribute[];
-    constructor(value?: string, attributes?: NSAttribute[]) {
+    runs: NSAttribute[];
+    constructor(value?: string, runs?: NSAttribute[]) {
         super();
         this.value = value!;
-        this.attributes = attributes!;
+        this.runs = runs!;
     }
     protected static readValue(unarchiver: Unarchiver) {
         return unarchiver.decodeTypedValues().values[0].value;
@@ -109,7 +109,7 @@ export class NSAttributedString extends NSString {
         return attributeValue;
     }
     protected static readAttributes(unarchiver: Unarchiver, length: number) {
-        const attributes: NSAttribute[] = [];
+        const runs: NSAttribute[] = [];
         let index = 0;
         let sharedAttributeValues: {[key: number]: NSAttributeValue} = {};
         while (index < length) {
@@ -120,13 +120,14 @@ export class NSAttributedString extends NSString {
             }
             const attributeValue = sharedAttributeValues[range.reference];
 
-            attributes.push({
-                range: [index, (index += range.length)-1],
-                value: attributeValue,
+            runs.push({
+                range: [index, range.length],
+                attributes: attributeValue,
             });
+            index += range.length;
         }
 
-        return attributes;
+        return runs;
     }
     static override initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): NSAttributedString {
         if (archivedClass.version != 0) {
@@ -154,7 +155,7 @@ interface NSAttributeValue {
 
 interface NSAttribute {
     range: number[],
-    value: NSAttributeValue,
+    attributes: NSAttributeValue,
 }
 
 @archivedClass("NSValue")
