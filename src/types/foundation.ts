@@ -59,10 +59,10 @@ export class NSDate extends NSObject {
 
 @archivedClass("NSString")
 export class NSString extends NSObject {
-    value: string;
+    string: string;
     constructor(value?: string) {
         super();
-        this.value = value!;
+        this.string = value!;
     }
     static override initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): NSString {
         if (archivedClass.version != 1) {
@@ -87,11 +87,11 @@ export class NSAttributedString extends NSString {
     runs: NSAttribute[];
     constructor(value?: string, runs?: NSAttribute[]) {
         super();
-        this.value = value!;
+        this.string = value!;
         this.runs = runs!;
     }
-    protected static readValue(unarchiver: Unarchiver) {
-        return unarchiver.decodeTypedValues().values[0].value;
+    protected static readString(unarchiver: Unarchiver) {
+        return unarchiver.decodeTypedValues().values[0].string;
     }
     protected static readRange(unarchiver: Unarchiver) {
         const range = unarchiver.decodeTypedValues();
@@ -104,7 +104,13 @@ export class NSAttributedString extends NSString {
         const dict = unarchiver.decodeTypedValues().values[0].contents;
         const attributeValue: NSAttributeValue = {};
         for (const [key, value] of dict.entries()) {
-            attributeValue[key.value] = value.value;
+            if (value instanceof NSData) {
+                attributeValue[key.string] = value.data;
+            } else if (value instanceof NSString) {
+                attributeValue[key.string] = value.string;
+            } else {
+                attributeValue[key.string] = value.value;
+            }
         }
         return attributeValue;
     }
@@ -133,7 +139,7 @@ export class NSAttributedString extends NSString {
         if (archivedClass.version != 0) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        const value = this.readValue(unarchiver).toString('utf8');
+        const value = this.readString(unarchiver);
         return new NSAttributedString(value, this.readAttributes(unarchiver, value.length));
     };
 }
@@ -144,7 +150,7 @@ export class NSMutableAttributedString extends NSAttributedString {
         if (archivedClass.version != 0) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        const value = this.readValue(unarchiver).toString('utf8');
+        const value = this.readString(unarchiver);
         return new NSMutableAttributedString(value, this.readAttributes(unarchiver, value.length));
     };
 }
