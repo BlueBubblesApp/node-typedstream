@@ -138,8 +138,8 @@ export namespace ObjectReference {
  * The wrapper class is used to distinguish atoms from untyped bytes.
  */
 export class Atom {
-    contents?: string;
-    constructor(contents?: string) {
+    contents?: Buffer;
+    constructor(contents?: Buffer) {
         this.contents = contents;
     }
 }
@@ -151,8 +151,8 @@ export class Atom {
  * The wrapper class is used to distinguish selector values from untyped bytes.
  */
 export class Selector {
-    name?: string;
-    constructor(name?: string) {
+    name?: Buffer;
+    constructor(name?: Buffer) {
         this.name = name;
     }
 }
@@ -164,8 +164,8 @@ export class Selector {
  * The wrapper class is used to distinguish typed C string values from untyped bytes.
  */
 export class CString {
-    contents: string;
-    constructor(contents: string) {
+    contents: Buffer;
+    constructor(contents: Buffer) {
         this.contents = contents;
     }
 }
@@ -305,7 +305,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
     private data: Buffer;
     private pos: number = 0;
 
-    sharedStringTable: Array<string>;
+    sharedStringTable: Array<Buffer>;
 
     streamerVersion: number;
     byteOrder: "LE" | "BE";
@@ -485,13 +485,13 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
      * @return The read string data, which may be ``nil``/``None``.
      * @private
      */
-    private readUnsharedString(head?: number): string | undefined {
+    private readUnsharedString(head?: number): Buffer | undefined {
         head = this.readHeadByte(head);
         if (head == TAG_NIL) {
             return undefined;
         }
         const length = this.readInteger(false, head);
-        return this.readExact(length).toString('ascii');
+        return this.readExact(length);
     }
 
     /**
@@ -508,7 +508,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
      * @return The read string data, which may be ``nil``/``None``.
      * @private
      */
-    private readSharedString(head?: number): string | undefined {
+    private readSharedString(head?: number): Buffer | undefined {
         head = this.readHeadByte(head);
         if (head == TAG_NIL) {
             return undefined;
@@ -589,7 +589,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
                 throw new InvalidTypedStreamError("Class name cannot be nil");
             }
             const version = this.readInteger(true);
-            yield new SingleClass(name, version);
+            yield new SingleClass(name.toString('ascii'), version);
             head = this.readHeadByte();
         }
 
@@ -733,7 +733,7 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
             }
         }
 
-        const encodingString = this.readSharedString(head);
+        const encodingString = this.readSharedString(head)?.toString('ascii');
         if (encodingString == null) {
             throw new InvalidTypedStreamError("Encountered nil type encoding string");
         }

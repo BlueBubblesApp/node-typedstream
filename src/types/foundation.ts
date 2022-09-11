@@ -68,7 +68,7 @@ export class NSString extends NSObject {
         if (archivedClass.version != 1) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        return new NSString(unarchiver.decodeValueOfType('+'));
+        return new NSString(unarchiver.decodeValueOfType('+').toString('utf8'));
     };
 }
 
@@ -78,7 +78,7 @@ export class NSMutableString extends NSString {
         if (archivedClass.version != 1) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        return new NSMutableString(unarchiver.decodeValueOfType('+'));
+        return new NSMutableString(unarchiver.decodeValueOfType('+').toString('utf8'));
     };
 }
 
@@ -133,7 +133,7 @@ export class NSAttributedString extends NSString {
         if (archivedClass.version != 0) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        const value = this.readValue(unarchiver);
+        const value = this.readValue(unarchiver).toString('utf8');
         return new NSAttributedString(value, this.readAttributes(unarchiver, value.length));
     };
 }
@@ -144,7 +144,7 @@ export class NSMutableAttributedString extends NSAttributedString {
         if (archivedClass.version != 0) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        const value = this.readValue(unarchiver);
+        const value = this.readValue(unarchiver).toString('utf8');
         return new NSMutableAttributedString(value, this.readAttributes(unarchiver, value.length));
     };
 }

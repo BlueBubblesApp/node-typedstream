@@ -103,7 +103,11 @@ export class Unarchiver {
     decodeAnyUntypedValue(expectedEncoding: string): any {
         const first = this.reader.next().value;
 
-        if (first == null || (["number", "string"].includes(typeof first))) {
+        if (
+            first == null
+            || (["number", "string"].includes(typeof first))
+            || first instanceof Buffer
+        ) {
             return first;
         } else if (first instanceof ObjectReference) {
             return this.lookupReference(first);
@@ -231,7 +235,7 @@ export class Unarchiver {
 
             const end = this.reader.next().value;
             if (!(end instanceof EndStruct)) {
-                throw new EvalError(`Expected EndStreuct, not ${typeof end}`);
+                throw new EvalError(`Expected EndStruct, not ${typeof end}`);
             }
 
             if (nodeStructClass == null) {
@@ -240,7 +244,7 @@ export class Unarchiver {
                 return new nodeStructClass(fields);
             }
         } else {
-            throw new EvalError(`Unexpected event at beginning of untyped value: ${typeof first}`);
+            throw new EvalError(`Unexpected event at beginning of untyped value: ${first.constructor.name}`);
         }
     }
 
