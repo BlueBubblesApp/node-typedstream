@@ -19,14 +19,14 @@ function endOfEncoding(encoding: string, start: number) {
     let i = start;
     while (i < encoding.length) {
         let c = encoding.substring(i, i+1);
-        if (c in ['(', '[', '{']) {
+        if (['(', '[', '{'].includes(c)) {
             // Opening parenthesis of some type, wait for a corresponding closing paren.
             // This doesn't check that the parenthesis *types* match
             // (only the *number* of closing parens has to match).
             parenDepth++;
             i++;
         } else if (parenDepth > 0) {
-            if (c in [')', ']', '}']) {
+            if ([')', ']', '}'].includes(c)) {
                 parenDepth--;
             }
             i++;
@@ -76,9 +76,9 @@ export function parseArrayEncoding(arrayEncoding: string) {
         throw new EvalError(`Missing closing bracket in array type encoding ${arrayEncoding}`);
     }
 
-    let i = 0;
-    while(i < arrayEncoding.length) {
-        if (!(arrayEncoding.charAt(i) in ['0','1','2','3','4','5','6','7','8','9'])) {
+    let i = 1;
+    while(i < arrayEncoding.length - 1) {
+        if (!(['0','1','2','3','4','5','6','7','8','9'].includes(arrayEncoding.charAt(i)))) {
             break;
         }
         i++;
