@@ -1,6 +1,7 @@
-import {CClass, TypedGroup, TypedValue, Unarchiver} from "../archiver";
+import {CClass, Unarchiver} from "../archiver";
 import {archivedClass, KnownArchivedObject} from "./known_types";
-import {EndObject} from "../stream";
+import bPlistParser from "bplist-parser";
+import * as fs from "fs";
 
 @archivedClass("NSObject")
 export class NSObject extends KnownArchivedObject {
@@ -15,7 +16,7 @@ export class NSObject extends KnownArchivedObject {
 @archivedClass("NSData")
 export class NSData extends NSObject {
     //TODO
-    data: any;
+    data: Buffer;
     constructor(data?: any) {
         super();
         this.data = data!;
@@ -24,7 +25,7 @@ export class NSData extends NSObject {
         if (archivedClass.version != 0) {
             throw new EvalError(`Unsupported version: ${archivedClass.version}`);
         }
-        return new NSData(unarchiver.decodeDataObject());
+        return new NSData(Buffer.from(unarchiver.decodeDataObject()));
     };
 }
 
@@ -105,7 +106,16 @@ export class NSAttributedString extends NSString {
         const attributeValue: NSAttributeValue = {};
         for (const [key, value] of dict.entries()) {
             if (value instanceof NSData) {
-                attributeValue[key.string] = value.data;
+                if (unarchiver.binaryDecoding != Unarchiver.BinaryDecoding.none) {
+                    const data = value.data;
+                    try {
+                        attributeValue[key.string] = bPlistParser.parseBuffer(data);
+                    } catch (e) {
+                        if (unarchiver.binaryDecoding == Unarchiver.BinaryDecoding.all) {
+                            attributeValue[key.string] = data;
+                        }
+                    }
+                }
             } else if (value instanceof NSString) {
                 attributeValue[key.string] = value.string;
             } else {
@@ -156,7 +166,7 @@ export class NSMutableAttributedString extends NSAttributedString {
 }
 
 interface NSAttributeValue {
-    [key: string]: string | number,
+    [key: string]: any,
 }
 
 interface NSAttribute {

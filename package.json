@@ -5,7 +5,7 @@
     "name": "Elliot Nash",
     "email": "elliotnash@gmail.com"
   },
-  "version": "1.2.1",
+  "version": "1.3.0",
   "license": "MIT",
   "devDependencies": {
     "@tsconfig/node16": "^1.0.3",
@@ -18,5 +18,8 @@
     "build": "tsc"
   },
   "main": "dist/index.js",
-  "types": "dist/index.d.ts"
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "bplist-parser": "^0.3.2"
+  }
 }

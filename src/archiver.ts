@@ -81,15 +81,17 @@ class GenericStruct {
 class NO_LOOKAHEAD {}
 
 export class Unarchiver {
-    reader: TypedStreamReader
+    reader: TypedStreamReader;
+    binaryDecoding: Unarchiver.BinaryDecoding;
     private sharedObjectTable: Array<[ObjectReference.Type, any]> = [];
 
-    constructor(reader: TypedStreamReader) {
+    constructor(reader: TypedStreamReader, binaryDecoding = Unarchiver.BinaryDecoding.all) {
         this.reader = reader;
+        this.binaryDecoding = binaryDecoding;
     }
 
-    static open(data: Buffer): Unarchiver {
-        return new Unarchiver(new TypedStreamReader(data));
+    static open(data: Buffer, binaryDecoding = Unarchiver.BinaryDecoding.all): Unarchiver {
+        return new Unarchiver(new TypedStreamReader(data), binaryDecoding);
     }
 
     private lookupReference(ref: ObjectReference) {
@@ -332,5 +334,13 @@ export class Unarchiver {
             }
             throw new EvalError(`Archive's root value is a group of ${rootGroup.values.length} values (expected exactly one root value`);
         }
+    }
+}
+
+export namespace Unarchiver {
+    export enum BinaryDecoding {
+        all,
+        decodable,
+        none
     }
 }
