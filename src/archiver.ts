@@ -19,6 +19,7 @@ import {
 import {archivedClassesByName, KnownArchivedObject, structClassesByEncoding} from "./types/known_types";
 // import all objc classes to register them
 import './types/foundation';
+import {BPlistReader} from "./bplist";
 
 export class TypedGroup {
     encodings: Array<string>;
@@ -81,17 +82,27 @@ class GenericStruct {
 class NO_LOOKAHEAD {}
 
 export class Unarchiver {
-    reader: TypedStreamReader;
+    reader: TypedStreamReader | BPlistReader;
     binaryDecoding: Unarchiver.BinaryDecoding;
     private sharedObjectTable: Array<[ObjectReference.Type, any]> = [];
 
-    constructor(reader: TypedStreamReader, binaryDecoding = Unarchiver.BinaryDecoding.all) {
+    constructor(reader: TypedStreamReader | BPlistReader, binaryDecoding = Unarchiver.BinaryDecoding.all) {
         this.reader = reader;
         this.binaryDecoding = binaryDecoding;
     }
 
     static open(data: Buffer, binaryDecoding = Unarchiver.BinaryDecoding.all): Unarchiver {
-        return new Unarchiver(new TypedStreamReader(data), binaryDecoding);
+        let reader;
+        try {
+            reader = new TypedStreamReader(data);
+        } catch (e: any) {
+            if (e.constructor.name == 'InvalidTypedStreamError') {
+                reader = new BPlistReader(data);
+            } else {
+                throw e;
+            }
+        }
+        return new Unarchiver(reader, binaryDecoding);
     }
 
     private lookupReference(ref: ObjectReference) {
@@ -103,6 +114,9 @@ export class Unarchiver {
     }
 
     decodeAnyUntypedValue(expectedEncoding: string): any {
+        if (this.reader instanceof BPlistReader) {
+            throw new Error('Operation not supported for datatype bplist');
+        }
         const first = this.reader.next().value;
 
         if (
@@ -251,6 +265,9 @@ export class Unarchiver {
     }
 
     decodeTypedValues(lookahead: any = NO_LOOKAHEAD) {
+        if (this.reader instanceof BPlistReader) {
+            throw new Error('Operation not supported for datatype bplist');
+        }
         const begin = lookahead == NO_LOOKAHEAD ? this.reader.next().value : lookahead;
 
         if (!(begin instanceof BeginTypedValues)) {
@@ -307,17 +324,21 @@ export class Unarchiver {
     }
 
     decodeAll() {
-        const contents = [];
+        if (this.reader instanceof BPlistReader) {
+            return this.reader.read();
+        } else {
+            const contents = [];
 
-        while (true) {
-            const lookahead = this.reader.next();
-            if (lookahead.done) {
-                break;
+            while (true) {
+                const lookahead = this.reader.next();
+                if (lookahead.done) {
+                    break;
+                }
+                contents.push(this.decodeTypedValues(lookahead.value));
             }
-            contents.push(this.decodeTypedValues(lookahead.value));
-        }
 
-        return contents;
+            return contents;
+        }
     }
 
     decodeSingleRoot() {

@@ -1,7 +1,5 @@
 import {CClass, Unarchiver} from "../archiver";
 import {archivedClass, KnownArchivedObject} from "./known_types";
-import bPlistParser from "bplist-parser";
-import * as fs from "fs";
 
 @archivedClass("NSObject")
 export class NSObject extends KnownArchivedObject {
@@ -109,7 +107,12 @@ export class NSAttributedString extends NSString {
                 if (unarchiver.binaryDecoding != Unarchiver.BinaryDecoding.none) {
                     const data = value.data;
                     try {
-                        attributeValue[key.string] = bPlistParser.parseBuffer(data);
+                        const decoded = Unarchiver.open(data).decodeAll();
+                        if (decoded.length == 1) {
+                            attributeValue[key.string] = decoded[0];
+                        } else {
+                            attributeValue[key.string] = decoded;
+                        }
                     } catch (e) {
                         if (unarchiver.binaryDecoding == Unarchiver.BinaryDecoding.all) {
                             attributeValue[key.string] = data;
