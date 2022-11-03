@@ -9,6 +9,7 @@ export class BPlistReader {
     private nameMap: {[key: string]: string} = {
         'ec': 'editedContent',
         'ep': 'editedParts',
+        'rp': 'retractedParts',
         'euh': 'editingUserHandle',
         'bcg': 'backwardsCompatibilityGuid',
         'd': 'date',
